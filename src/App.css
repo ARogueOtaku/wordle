@@ -1,38 +1,208 @@
-.App {
-  text-align: center;
+.app {
+  --black: #121213;
+  --white: #ffffff;
+  --green: #538d4e;
+  --yellow: #b59f3b;
+  --grey: #3a3a3c;
+  --light-grey: #818384;
+  height: 100%;
+  width: 100%;
+  display: grid;
+  place-items: center;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.dark {
+  --background-default: var(--black);
+  --full-match: var(--green);
+  --partial-match: var(--yellow);
+  --no-match: var(--grey);
+  --border-default: var(--grey);
+  --border-active: var(--light-grey);
+  --text: var(--white);
+  background-color: var(--background-default);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
+.wordlegrid {
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
 }
 
-.App-link {
-  color: #61dafb;
+.wordlegrid,
+.line {
+  display: flex;
+  gap: 5px;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+.line.invalid {
+  animation-name: shake;
+  animation-duration: 0.3s;
+}
+
+.character {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  font-size: 2rem;
+  font-weight: bolder;
+  color: var(--text);
+  border-width: 2px;
+  border-style: solid;
+  border-color: var(--border-default);
+  text-transform: uppercase;
+}
+
+.character.green,
+.character.yellow,
+.character.character.grey {
+  animation-duration: 1s;
+  animation-fill-mode: forwards;
+  animation-name: reveal;
+}
+
+.character.green:nth-child(2),
+.character.yellow:nth-child(2),
+.character.grey:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.character.green:nth-child(3),
+.character.yellow:nth-child(3),
+.character.grey:nth-child(3) {
+  animation-delay: 0.4s;
+}
+.character.green:nth-child(4),
+.character.yellow:nth-child(4),
+.character.grey:nth-child(4) {
+  animation-delay: 0.6s;
+}
+.character.green:nth-child(5),
+.character.yellow:nth-child(5),
+.character.grey:nth-child(5) {
+  animation-delay: 0.8s;
+}
+
+.character.green {
+  --background: var(--full-match);
+  --border: var(--full-match);
+}
+
+.character.yellow {
+  --background: var(--partial-match);
+  --border: var(--partial-match);
+}
+
+.character.grey {
+  --background: var(--no-match);
+  --border: var(--no-match);
+}
+
+.character.typed {
+  border-color: var(--border-active);
+  animation-name: pop;
+  animation-duration: 0.1s;
+}
+
+.message {
+  padding: 5px 10px;
+  position: fixed;
+  margin: 50px;
+  border-radius: 2px;
+  bottom: 0;
+  font-weight: 500;
+  opacity: 1;
+  background-color: var(--text);
+  color: var(--background-default);
+  transition: all 0.3s;
+}
+
+.loading {
+  display: flex;
+}
+
+.loading > div {
+  height: 15px;
+  width: 20px;
+  margin: 2px;
+  background-color: var(--border-default);
+  animation-name: grow;
+  animation-duration: 1.4s;
+  animation-iteration-count: infinite;
+  border-top-left-radius: 50%;
+  border-bottom-left-radius: 50%;
+}
+
+.loading > div:nth-child(2) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  animation-delay: 0.2s;
+}
+
+.loading > div:nth-child(3) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-top-right-radius: 50%;
+  border-bottom-right-radius: 50%;
+  animation-delay: 0.4s;
+}
+
+.message.hidden {
+  opacity: 0;
+  bottom: -20px;
+}
+
+@keyframes reveal {
+  0% {
+    background-color: var(--background-default);
+    border-color: var(--border-default);
+    transform: rotateX(0deg);
   }
-  to {
-    transform: rotate(360deg);
+  45% {
+    transform: rotateX(90deg);
+  }
+  50% {
+    background-color: var(--background-default);
+    border-color: var(--border-default);
+    transform: rotateX(90deg);
+  }
+  55% {
+    background-color: var(--background);
+    border-color: var(--border);
+  }
+  100% {
+    background-color: var(--background);
+    border-color: var(--border);
+    transform: rotateX(0deg);
+  }
+}
+
+@keyframes pop {
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes shake {
+  20% {
+    transform: translateX(-12px);
+  }
+  40% {
+    transform: translateX(12px);
+  }
+  60% {
+    transform: translateX(-6px);
+  }
+  80% {
+    transform: translateX(6px);
+  }
+}
+
+@keyframes grow {
+  50% {
+    transform: scale(0.3);
+  }
+  100% {
+    transform: scale(1);
   }
 }

@@ -1,26 +1,34 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { useCallback, useEffect, useState } from "react";
+import "./App.css";
+import Grid from "./components/Grid";
+import Loading from "./components/Loading";
+import { WordleProvider } from "./contexts/WordleContext";
+import fetchWords from "./services/proto/fetchWords";
 
-function App() {
+const maxGuess = parseInt(process.env.REACT_APP_MAXIMUM_GUESS ?? "6");
+
+const App = () => {
+  const [theWord, setTheWord] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const fetchTheWord = useCallback(async () => {
+    setLoading(true);
+    const word = await fetchWords();
+    setTheWord(word);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchTheWord();
+  }, [fetchTheWord]);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="app dark">
+      <WordleProvider maxGuess={maxGuess} word={theWord} generateWord={fetchTheWord}>
+        {loading || theWord.length === 0 ? <Loading /> : <Grid />}
+      </WordleProvider>
     </div>
   );
-}
+};
 
 export default App;

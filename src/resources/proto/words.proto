@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+message Word{
+    string word=1;
+}
+
+message WordRequest{
+    int32 length=1;
+}
+
+service WordService{
+    rpc getWord (WordRequest) returns (Word);
+}
+
+
