@@ -3,7 +3,7 @@ import "./App.css";
 import Game from "./components/Wordle/Game";
 import NavBar from "./components/NavBar";
 import { WordleProvider } from "./contexts/WordleContext";
-import fetchWords from "./services/proto/fetchWords";
+import fetchWords from "./services/memory/fetchWords";
 import ThemeContext from "./contexts/ThemeContext";
 
 const maxGuess = parseInt(process.env.REACT_APP_MAXIMUM_GUESS ?? "6");

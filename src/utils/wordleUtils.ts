@@ -1,4 +1,4 @@
-import { ECharMatch, IWord, ICharacter, ECharSize } from "../types";
+import { ECharMatch, IWord, ICharacter } from "../types";
 
 export const generateCharacter = (character = "", match: ECharMatch = ECharMatch.NA): ICharacter => {
   return { character, match };
