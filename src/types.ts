@@ -1,8 +1,22 @@
 export enum ECharMatch {
-  FULL,
-  PARTIAL,
-  NONE,
-  NA,
+  FULL = 4,
+  PARTIAL = 3,
+  NONE = 2,
+  NA = 1,
+  OTHER = 0,
+}
+
+export enum ECharSize {
+  XSMALL,
+  SMALL,
+  MEDIUM,
+  LARGE,
+  XLARGE,
+}
+
+export enum EColorTheme {
+  LIGHT = "light",
+  DARK = "dark",
 }
 
 export interface ICharacter {
@@ -10,6 +24,6 @@ export interface ICharacter {
   match: ECharMatch;
 }
 
-export interface ILine {
+export interface IWord {
   characters: ICharacter[];
 }

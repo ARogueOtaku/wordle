@@ -1,21 +1,28 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import "./App.css";
-import Grid from "./components/Grid";
-import Loading from "./components/Loading";
+import Game from "./components/Wordle/Game";
+import NavBar from "./components/NavBar";
 import { WordleProvider } from "./contexts/WordleContext";
 import fetchWords from "./services/proto/fetchWords";
+import ThemeContext from "./contexts/ThemeContext";
 
 const maxGuess = parseInt(process.env.REACT_APP_MAXIMUM_GUESS ?? "6");
 
 const App = () => {
-  const [theWord, setTheWord] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [theWord, setTheWord] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
+  const { theme } = useContext(ThemeContext);
 
   const fetchTheWord = useCallback(async () => {
     setLoading(true);
-    const word = await fetchWords();
-    setTheWord(word);
-    setLoading(false);
+    try {
+      const word = await fetchWords();
+      setTheWord(word);
+    } catch (err) {
+      console.log(err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -23,9 +30,10 @@ const App = () => {
   }, [fetchTheWord]);
 
   return (
-    <div className="app dark">
-      <WordleProvider maxGuess={maxGuess} word={theWord} generateWord={fetchTheWord}>
-        {loading || theWord.length === 0 ? <Loading /> : <Grid />}
+    <div className={`app ${theme}`}>
+      <WordleProvider maxGuess={maxGuess} word={theWord} fetchNewWord={fetchTheWord}>
+        <NavBar headerText="wordle" />
+        <Game loading={loading} />
       </WordleProvider>
     </div>
   );

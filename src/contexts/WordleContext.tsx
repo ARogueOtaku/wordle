@@ -1,44 +1,156 @@
-import { createContext, Dispatch, ReactNode, SetStateAction, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  Dispatch,
+  ReactNode,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Message from "../components/Message";
 import useToast from "../hooks/useToast";
-import { generateCharacter, generateLine, getValidatedLine } from "../utils/lineUtils";
-import { ICharacter, ILine } from "../types";
+import { generateCharacter, generateWord, getValidatedWord } from "../utils/wordleUtils";
+import { ECharMatch, ICharacter, IWord } from "../types";
 
 interface IWordleProviderProps {
   maxGuess: number;
   word: string;
   children: ReactNode;
-  generateWord: () => void;
+  fetchNewWord: () => void;
 }
 
 interface IWordleContextProps {
-  lines: Array<ILine>;
-  currentLineIndex: number;
-  currentLineCharacterIndex: number;
-  isInvalidLine: boolean;
-  setIsInvalidLine: Dispatch<SetStateAction<boolean>>;
+  words: Array<IWord>;
+  currentWordIndex: number;
+  currentWordCharacterIndex: number;
+  isInvalidWord: boolean;
+  setIsInvalidWord: Dispatch<SetStateAction<boolean>>;
   setMessage: (message: string) => void;
   gameEnded: boolean;
   resetGame: () => void;
+  keyboardCharacters: Array<ICharacter>;
+  handleKeyboardClick: (characterString: string) => void;
+  currentKeyboardCharacter: string;
 }
 
 const WordleContext = createContext<IWordleContextProps>({} as IWordleContextProps);
 
-export const WordleProvider = ({ maxGuess, word, children, generateWord }: IWordleProviderProps) => {
-  const [gameEnded, setGameEnded] = useState<boolean>(false);
-  const [currentLineIndex, setCurrentLineIndex] = useState<number>(0);
-  const [currentLineCharacterIndex, setCurrentLineCharacterIndex] = useState<number>(0);
-  const [isInvalidLine, setIsInvalidLine] = useState<boolean>(false);
-  const [lines, setLines] = useState<Array<ILine>>(Array.from({ length: maxGuess }, generateLine));
-  const { open, message, setToast } = useToast();
+const defaultKeyboardChars = [
+  "q",
+  "w",
+  "e",
+  "r",
+  "t",
+  "y",
+  "u",
+  "i",
+  "o",
+  "p",
+  "a",
+  "s",
+  "d",
+  "f",
+  "g",
+  "h",
+  "j",
+  "k",
+  "l",
+  "«",
+  "z",
+  "x",
+  "c",
+  "v",
+  "b",
+  "n",
+  "m",
+  "↵",
+].map((char) => generateCharacter(char, ECharMatch.OTHER));
 
+export const WordleProvider = ({ maxGuess, word, children, fetchNewWord }: IWordleProviderProps) => {
+  const [gameEnded, setGameEnded] = useState<boolean>(false);
+  const [currentWordIndex, setCurrentWordIndex] = useState<number>(0);
+  const [currentWordCharacterIndex, setCurrentWordCharacterIndex] = useState<number>(0);
+  const validatedWordRef = useRef<IWord>({} as IWord);
+  const [isInvalidWord, setIsInvalidWord] = useState<boolean>(false);
+  const [words, setWords] = useState<Array<IWord>>(Array.from({ length: maxGuess }, generateWord));
+  const { open, message, setToast } = useToast();
+  const [currentKeyboardCharacter, setCurrentKeyboardCharacter] = useState<string>("");
+  const [keyboardCharacters, setKeyboardCharacters] = useState<Array<ICharacter>>(defaultKeyboardChars);
+  const characterClearTimeoutRef = useRef<number>(-1);
+
+  const preventFunnyBusiness = useCallback((event: KeyboardEvent) => event.preventDefault(), []);
+
+  //======================Keyboard Logic==============================
+  const updateKeyboard = useCallback(() => {
+    setKeyboardCharacters((oldCharacters) => {
+      const characterMatchObj: { [key: string]: ECharMatch } = {};
+      validatedWordRef.current.characters.forEach((character) => {
+        if (
+          typeof characterMatchObj[character.character] === "undefined" ||
+          characterMatchObj[character.character] < character.match
+        )
+          characterMatchObj[character.character] = character.match;
+      });
+      return oldCharacters.map((character) => {
+        if (characterMatchObj[character.character] > character.match)
+          return generateCharacter(character.character, characterMatchObj[character.character]);
+        return character;
+      });
+    });
+  }, []);
+
+  const handleKeyboardClick = useCallback((character: string) => {
+    let char = character;
+    switch (char) {
+      case "↵":
+        char = "enter";
+        break;
+      case "«":
+        char = "backspace";
+        break;
+      default:
+        break;
+    }
+    document.dispatchEvent(new KeyboardEvent("keyup", { key: char }));
+  }, []);
+
+  const handleKeyboardKeyPress = useCallback(
+    (event: KeyboardEvent, triggerUpdate: boolean) => {
+      if (characterClearTimeoutRef.current > -1) window.clearTimeout(characterClearTimeoutRef.current);
+      let char = event.key.toLowerCase();
+      switch (char) {
+        case "enter":
+          char = "↵";
+          break;
+        case "backspace":
+          char = "«";
+          break;
+        default:
+          break;
+      }
+      setCurrentKeyboardCharacter(char);
+      characterClearTimeoutRef.current = window.setTimeout(() => {
+        setCurrentKeyboardCharacter("");
+        characterClearTimeoutRef.current = -1;
+      }, 100);
+      if (/enter/i.test(event.key) && triggerUpdate) updateKeyboard();
+    },
+    [updateKeyboard]
+  );
+  //==================================================================
+
+  //=========================Grid Logic===============================
   const resetGame = useCallback(() => {
-    setCurrentLineIndex(0);
-    setCurrentLineCharacterIndex(0);
-    setLines(Array.from({ length: maxGuess }, generateLine));
+    console.log("Resetting");
+    setCurrentWordIndex(0);
+    setCurrentWordCharacterIndex(0);
+    setWords(Array.from({ length: maxGuess }, generateWord));
     setGameEnded(false);
-    generateWord();
-  }, [generateWord, maxGuess]);
+    setKeyboardCharacters(defaultKeyboardChars);
+    fetchNewWord();
+  }, [fetchNewWord, maxGuess]);
 
   const setMessage = useCallback(
     (message: string) => {
@@ -47,93 +159,126 @@ export const WordleProvider = ({ maxGuess, word, children, generateWord }: IWord
     [setToast]
   );
 
-  const addCharToCurrentLine = useCallback(
+  const addCharToCurrentWord = useCallback(
     (char: string): boolean => {
-      if (currentLineCharacterIndex >= 5) return false;
+      if (currentWordCharacterIndex >= 5) return false;
       const character: ICharacter = generateCharacter(char);
-      setLines((oldLines) => {
-        const newLines = [...oldLines];
-        const newLineChars = [...newLines[currentLineIndex].characters];
-        newLineChars[currentLineCharacterIndex] = character;
-        newLines[currentLineIndex].characters = newLineChars;
-        return newLines;
+      setWords((oldWords) => {
+        const newWords = [...oldWords];
+        const newWordChars = [...newWords[currentWordIndex].characters];
+        newWordChars[currentWordCharacterIndex] = character;
+        newWords[currentWordIndex].characters = newWordChars;
+        return newWords;
       });
       return true;
     },
-    [currentLineIndex, currentLineCharacterIndex]
+    [currentWordIndex, currentWordCharacterIndex]
   );
 
-  const removeLastCharFromCurrentLine = useCallback((): boolean => {
-    if (currentLineCharacterIndex <= 0) return false;
-    const lineChar: ICharacter = generateCharacter();
-    setLines((oldLines) => {
-      const newLines = [...oldLines];
-      const newLineChars = [...newLines[currentLineIndex].characters];
-      newLineChars[currentLineCharacterIndex - 1] = lineChar;
-      newLines[currentLineIndex].characters = newLineChars;
-      return newLines;
+  const removeLastCharFromCurrentWord = useCallback((): boolean => {
+    if (currentWordCharacterIndex <= 0) return false;
+    const wordChar: ICharacter = generateCharacter();
+    setWords((oldWords) => {
+      const newWords = [...oldWords];
+      const newWordChars = [...newWords[currentWordIndex].characters];
+      newWordChars[currentWordCharacterIndex - 1] = wordChar;
+      newWords[currentWordIndex].characters = newWordChars;
+      return newWords;
     });
     return true;
-  }, [currentLineIndex, currentLineCharacterIndex]);
+  }, [currentWordIndex, currentWordCharacterIndex]);
 
-  const evaluateAndUpdateCurrentLine = useCallback((): boolean => {
-    if (currentLineCharacterIndex < 5) {
-      setIsInvalidLine(true);
+  const updateCurrentWord = useCallback((): boolean => {
+    if (currentWordCharacterIndex < 5) {
+      setIsInvalidWord(true);
       setMessage("Guesses must be 5 characters!");
       return false;
     }
-    const validatedLine = getValidatedLine(lines[currentLineIndex], word);
-    setLines((oldLines) => {
-      const newLines = [...oldLines];
-      newLines[currentLineIndex] = validatedLine;
-      return newLines;
+    setWords((oldWords) => {
+      const newWords = [...oldWords];
+      newWords[currentWordIndex] = validatedWordRef.current;
+      return newWords;
     });
-    const currentWord = validatedLine.characters.reduce((acc, x) => acc + x.character, "");
+    const currentWord = validatedWordRef.current.characters.reduce((acc, x) => acc + x.character, "");
     if (currentWord.toLowerCase() === word.toLowerCase()) {
       setMessage("You Win!");
       setGameEnded(true);
-    } else if (currentLineIndex >= maxGuess - 1) {
+    } else if (currentWordIndex >= maxGuess - 1) {
       setMessage("You Lose");
       setGameEnded(true);
     } else {
-      setCurrentLineIndex((oldIndex) => oldIndex + 1);
-      setCurrentLineCharacterIndex(0);
+      setCurrentWordIndex((oldIndex) => oldIndex + 1);
+      setCurrentWordCharacterIndex(0);
     }
     return true;
-  }, [currentLineIndex, word, currentLineCharacterIndex, maxGuess, setMessage, lines]);
+  }, [currentWordIndex, word, currentWordCharacterIndex, maxGuess, setMessage]);
+
+  const handleGridKeyPress = useCallback(
+    (event: KeyboardEvent): boolean => {
+      if (/backspace/i.test(event.key)) {
+        if (removeLastCharFromCurrentWord()) setCurrentWordCharacterIndex((oldIndex) => oldIndex - 1);
+      } else if (/enter/i.test(event.key)) {
+        return updateCurrentWord();
+      } else if (/^[a-zA-Z]$/.test(event.key)) {
+        if (addCharToCurrentWord(event.key)) setCurrentWordCharacterIndex((oldIndex) => oldIndex + 1);
+      }
+      return true;
+    },
+    [addCharToCurrentWord, removeLastCharFromCurrentWord, updateCurrentWord]
+  );
+  //==================================================================
 
   const handleKeyPress = useCallback(
     (event: KeyboardEvent) => {
-      if (/backspace/i.test(event.key)) {
-        if (removeLastCharFromCurrentLine()) setCurrentLineCharacterIndex((oldIndex) => oldIndex - 1);
-      } else if (/enter/i.test(event.key)) {
-        evaluateAndUpdateCurrentLine();
-      } else if (/^[a-zA-Z]$/.test(event.key)) {
-        if (addCharToCurrentLine(event.key)) setCurrentLineCharacterIndex((oldIndex) => oldIndex + 1);
-      }
+      event.preventDefault();
+      validatedWordRef.current = getValidatedWord(words[currentWordIndex], word);
+      const triggerKeyboardUpdate = handleGridKeyPress(event);
+      handleKeyboardKeyPress(event, triggerKeyboardUpdate);
     },
-    [addCharToCurrentLine, removeLastCharFromCurrentLine, evaluateAndUpdateCurrentLine]
+    [handleGridKeyPress, handleKeyboardKeyPress, currentWordIndex, word, words]
   );
 
   const providerValue: IWordleContextProps = useMemo(
     () => ({
-      lines,
-      currentLineCharacterIndex,
-      currentLineIndex,
-      isInvalidLine,
-      setIsInvalidLine,
+      words,
+      currentWordCharacterIndex,
+      currentWordIndex,
+      isInvalidWord,
+      setIsInvalidWord,
       setMessage,
       gameEnded,
       resetGame,
+      keyboardCharacters,
+      currentKeyboardCharacter,
+      handleKeyboardClick,
     }),
-    [lines, currentLineCharacterIndex, currentLineIndex, isInvalidLine, setMessage, gameEnded, resetGame]
+    [
+      words,
+      currentWordCharacterIndex,
+      currentWordIndex,
+      isInvalidWord,
+      setMessage,
+      gameEnded,
+      resetGame,
+      keyboardCharacters,
+      currentKeyboardCharacter,
+      handleKeyboardClick,
+    ]
   );
 
   useEffect(() => {
-    if (gameEnded) window.removeEventListener("keyup", handleKeyPress);
-    else window.addEventListener("keyup", handleKeyPress);
-    return () => window.removeEventListener("keyup", handleKeyPress);
-  }, [handleKeyPress, gameEnded]);
+    if (gameEnded) document.removeEventListener("keyup", handleKeyPress);
+    else document.addEventListener("keyup", handleKeyPress);
+    document.addEventListener("keypress", preventFunnyBusiness);
+    document.addEventListener("keyup", preventFunnyBusiness);
+    document.addEventListener("keydown", preventFunnyBusiness);
+    return () => {
+      document.removeEventListener("keypress", preventFunnyBusiness);
+      document.removeEventListener("keyup", preventFunnyBusiness);
+      document.removeEventListener("keydown", preventFunnyBusiness);
+      document.removeEventListener("keyup", handleKeyPress);
+    };
+  }, [handleKeyPress, preventFunnyBusiness, gameEnded]);
 
   return (
     <>
