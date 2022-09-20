@@ -4,11 +4,12 @@ export interface IActionProps {
   onClick: () => void;
   icon?: ReactNode;
   highlight?: boolean;
+  title?: string;
 }
 
-const Action = ({ onClick, icon, highlight = false }: IActionProps) => {
+const Action = ({ onClick, icon, highlight = false, title }: IActionProps) => {
   return (
-    <button className={`action${highlight ? " highlight" : ""}`} onClick={onClick}>
+    <button type="button" title={title ?? ""} className={`action${highlight ? " highlight" : ""}`} onClick={onClick}>
       {icon ?? icon}
     </button>
   );

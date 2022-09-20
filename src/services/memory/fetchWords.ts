@@ -344,7 +344,7 @@ const words = [
 ];
 
 const fetchWords = async (): Promise<string> => {
-  await wait(5000);
+  await wait(2000);
   return new Promise((resolve) => {
     const word = words[Math.floor(Math.random() * words.length)];
     resolve(word);

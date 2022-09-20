@@ -8,7 +8,7 @@ const Grid = () => {
     useContext(WordleContext);
   return (
     <>
-      <div className="wordlegrid" data-testid="app">
+      <div className="wordlegrid appear" data-testid="app">
         {words.map((word, i) => (
           <Word
             key={i}

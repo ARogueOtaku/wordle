@@ -6,6 +6,12 @@ export enum ECharMatch {
   OTHER = 0,
 }
 
+export enum EDifficulty {
+  EASY,
+  NORMAL,
+  HARD,
+}
+
 export enum ECharSize {
   XSMALL,
   SMALL,

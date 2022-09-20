@@ -12,7 +12,7 @@ import {
 import Message from "../components/Message";
 import useToast from "../hooks/useToast";
 import { generateCharacter, generateWord, getValidatedWord } from "../utils/wordleUtils";
-import { ECharMatch, ICharacter, IWord } from "../types";
+import { ECharMatch, EDifficulty, ICharacter, IWord } from "../types";
 
 interface IWordleProviderProps {
   maxGuess: number;
@@ -33,6 +33,8 @@ interface IWordleContextProps {
   keyboardCharacters: Array<ICharacter>;
   handleKeyboardClick: (characterString: string) => void;
   currentKeyboardCharacter: string;
+  difficulty: EDifficulty;
+  toggleGameDifficulty: () => void;
 }
 
 const WordleContext = createContext<IWordleContextProps>({} as IWordleContextProps);
@@ -74,6 +76,7 @@ export const WordleProvider = ({ maxGuess, word, children, fetchNewWord }: IWord
   const [currentWordCharacterIndex, setCurrentWordCharacterIndex] = useState<number>(0);
   const validatedWordRef = useRef<IWord>({} as IWord);
   const [isInvalidWord, setIsInvalidWord] = useState<boolean>(false);
+  const [difficulty, setDifficulty] = useState<EDifficulty>(EDifficulty.EASY);
   const [words, setWords] = useState<Array<IWord>>(Array.from({ length: maxGuess }, generateWord));
   const { open, message, setToast } = useToast();
   const [currentKeyboardCharacter, setCurrentKeyboardCharacter] = useState<string>("");
@@ -194,6 +197,20 @@ export const WordleProvider = ({ maxGuess, word, children, fetchNewWord }: IWord
       setMessage("Guesses must be 5 characters!");
       return false;
     }
+    if (difficulty >= EDifficulty.NORMAL) {
+      for (const keyboardChar of keyboardCharacters) {
+        if (
+          keyboardChar.match >= ECharMatch.PARTIAL &&
+          validatedWordRef.current.characters.findIndex(
+            (character) => character.character === keyboardChar.character
+          ) === -1
+        ) {
+          setIsInvalidWord(true);
+          setMessage("Guesses must contain all previously guesse characters!");
+          return false;
+        }
+      }
+    }
     setWords((oldWords) => {
       const newWords = [...oldWords];
       newWords[currentWordIndex] = validatedWordRef.current;
@@ -211,7 +228,7 @@ export const WordleProvider = ({ maxGuess, word, children, fetchNewWord }: IWord
       setCurrentWordCharacterIndex(0);
     }
     return true;
-  }, [currentWordIndex, word, currentWordCharacterIndex, maxGuess, setMessage]);
+  }, [currentWordIndex, word, currentWordCharacterIndex, maxGuess, setMessage, difficulty, keyboardCharacters]);
 
   const handleGridKeyPress = useCallback(
     (event: KeyboardEvent): boolean => {
@@ -238,6 +255,8 @@ export const WordleProvider = ({ maxGuess, word, children, fetchNewWord }: IWord
     [handleGridKeyPress, handleKeyboardKeyPress, currentWordIndex, word, words]
   );
 
+  const toggleGameDifficulty = useCallback(() => setDifficulty((oldDifficulty) => ++oldDifficulty % 3), []);
+
   const providerValue: IWordleContextProps = useMemo(
     () => ({
       words,
@@ -251,6 +270,8 @@ export const WordleProvider = ({ maxGuess, word, children, fetchNewWord }: IWord
       keyboardCharacters,
       currentKeyboardCharacter,
       handleKeyboardClick,
+      difficulty,
+      toggleGameDifficulty,
     }),
     [
       words,
@@ -263,6 +284,8 @@ export const WordleProvider = ({ maxGuess, word, children, fetchNewWord }: IWord
       keyboardCharacters,
       currentKeyboardCharacter,
       handleKeyboardClick,
+      difficulty,
+      toggleGameDifficulty,
     ]
   );
 

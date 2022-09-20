@@ -9,7 +9,7 @@ interface IKeyboardProps {
 
 const Keyboard = ({ characters, handleCharacterClick, currentCharacter }: IKeyboardProps) => {
   return (
-    <div className="keyboard">
+    <div className="keyboard appear">
       {characters.map((character, index) => (
         <Character
           character={character}
